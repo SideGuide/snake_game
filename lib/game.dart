@@ -19,10 +19,10 @@ class Game extends StatefulWidget {
 }
 
 class _GameState extends State<Game> {
+  // board properties
   static int numberOfSquares = 640;
   static int foodRange = numberOfSquares - 50;
   static int botRange = numberOfSquares - 50;
-  int maxHealth = 3;
   // Initialize snake with positions, name, color and score of 0
   late Snake snake;
   late Board board;
