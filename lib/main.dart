@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:snake_game/game.dart';
-import 'package:snake_game/model/user.dart';
 import 'package:snake_game/services/route_service.dart';
 import 'package:snake_game/services/user_service.dart';
 
@@ -18,7 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Snake Game',
       debugShowCheckedModeBanner: false,
       home: MultiProvider(providers: [
         ChangeNotifierProvider<UserService>(

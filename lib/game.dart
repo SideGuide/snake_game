@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:snake_game/services/route_service.dart';
@@ -14,12 +15,12 @@ import 'model/user.dart';
 class Game extends StatefulWidget {
   final User user;
   const Game(this.user, {Key? key}) : super(key: key);
+
   @override
   State<Game> createState() => _GameState();
 }
 
 class _GameState extends State<Game> {
-  // board properties
   static int numberOfSquares = 640;
   static int foodRange = numberOfSquares - 50;
   static int botRange = numberOfSquares - 50;
@@ -56,13 +57,11 @@ class _GameState extends State<Game> {
     timer.cancel();
   }
 
-  // - - - - - - - - - - GAME FUNCTIONS - - - - - - - - - - -
-
   startGame() {
     // Reset any active bots
     resetBots();
     // Initialize the snake and board
-    initializeUserItems();
+    initializeModels();
     // Initialize any random vars
     initalizeRandoms();
     // Initialize the food and coin items
@@ -77,9 +76,28 @@ class _GameState extends State<Game> {
     bots = [];
   }
 
-  initializeUserItems() {
-    initializeSnake(widget.user);
-    initializeBoard(widget.user);
+  initializeModels() {
+    board = Board(
+      id: "default",
+      color: Colors.black,
+      name: "default",
+      price: 0,
+    );
+
+    Random rand = Random();
+    final direction = rand.nextInt(3);
+    final positioni = rand.nextInt(botRange);
+
+    snake = Snake(
+        name: "default",
+        color: Colors.orange,
+        direction: directions[direction],
+        coins: 0,
+        diamonds: 0,
+        price: 0,
+        score: 0,
+        positions:
+            generateRandomPositionList(directions[direction], positioni, 5));
   }
 
   initalizeRandoms() {
@@ -101,34 +119,130 @@ class _GameState extends State<Game> {
     });
   }
 
-  restartGame() {
-    startGame();
+  updateGame() {
+    setState(() {
+      checkToSpawnBot();
+      if (bots.isNotEmpty) {
+        moveBots();
+      }
+      moveSnake();
+      detectCollision();
+    });
   }
 
-  initializeBoard(User user) {
-    board = Board(
-      id: "default",
-      color: Colors.black,
-      name: "default",
-      price: 0,
-    );
+  moveBots() {
+    for (var i in bots) {
+      switch (i.direction) {
+        case "down":
+          if (i.positions.last > numberOfSquares - 20) {
+            i.positions.add(i.positions.last + 20 - numberOfSquares);
+          } else {
+            i.positions.add(i.positions.last + 20);
+          }
+          break;
+        case "up":
+          if (i.positions.last < 20) {
+            i.positions.add(i.positions.last - 20 + numberOfSquares);
+          } else {
+            i.positions.add(i.positions.last - 20);
+          }
+          break;
+        case "left":
+          if (i.positions.last % 20 == 0) {
+            i.positions.add(i.positions.last - 1 + 20);
+          } else {
+            i.positions.add(i.positions.last - 1);
+          }
+          break;
+        case "right":
+          if ((i.positions.last + 1) % 20 == 0) {
+            i.positions.add(i.positions.last + 1 - 20);
+          } else {
+            i.positions.add(i.positions.last + 1);
+          }
+          break;
+        default:
+      }
+      i.positions.removeAt(0);
+    }
   }
 
-  initializeSnake(User user) {
-    Random rand = Random();
-    var direction = rand.nextInt(3);
-    var positioni = rand.nextInt(botRange);
+  checkToSpawnBot() {
+    if (snake.score >= 20 && bots.isEmpty && placeHolderBots.isEmpty) {
+      spawnBots();
+    }
+    if (snake.score >= 50 && bots.length == 1 && placeHolderBots.isEmpty) {
+      spawnBots();
+    }
+  }
 
-    snake = Snake(
-        name: "default",
-        color: Colors.orange,
+  spawnBots() {
+    var direction = random.nextInt(3);
+    var position = random.nextInt(botRange);
+    var positions =
+        generateRandomPositionList(directions[direction], position, 5);
+    Snake bot1 = Snake(
+        name: "bot 1",
+        color: Colors.red,
         direction: directions[direction],
-        coins: 0,
-        diamonds: 0,
-        price: 0,
         score: 0,
-        positions:
-            generateRandomPositionList(directions[direction], positioni, 5));
+        positions: positions);
+    setState(() {
+      placeHolderBots.add(bot1);
+    });
+    Future.delayed(
+        const Duration(seconds: 3),
+        () => setState(() {
+              placeHolderBots.remove(bot1);
+              bots.add(bot1);
+            }));
+  }
+
+  moveSnake() {
+    switch (snake.direction) {
+      case "down":
+        // LAST ROW OF GRIDS
+        if (snake.positions.last > numberOfSquares - 20) {
+          snake.positions.add(snake.positions.last + 20 - numberOfSquares);
+        } else {
+          snake.positions.add(snake.positions.last + 20);
+        }
+        break;
+      case "up":
+        if (snake.positions.last < 20) {
+          snake.positions.add(snake.positions.last - 20 + numberOfSquares);
+        } else {
+          snake.positions.add(snake.positions.last - 20);
+        }
+        break;
+      case "left":
+        if (snake.positions.last % 20 == 0) {
+          snake.positions.add(snake.positions.last - 1 + 20);
+        } else {
+          snake.positions.add(snake.positions.last - 1);
+        }
+        break;
+      case "right":
+        if ((snake.positions.last + 1) % 20 == 0) {
+          snake.positions.add(snake.positions.last + 1 - 20);
+        } else {
+          snake.positions.add(snake.positions.last + 1);
+        }
+        break;
+      default:
+    }
+  }
+
+  detectCollision() {
+    if (snake.positions.last == coin) {
+      snake.coins += 50;
+      coin = randomCoin.nextInt(foodRange);
+    } else if (snake.positions.last == food) {
+      snake.score += 20;
+      food = random.nextInt(foodRange);
+    } else {
+      snake.positions.removeAt(0);
+    }
   }
 
   /// It takes a direction, an initial position and a snake length and returns a list of positions that
@@ -181,26 +295,26 @@ class _GameState extends State<Game> {
     return positionsList;
   }
 
-  spawnBots() {
-    var direction = random.nextInt(3);
-    var position = random.nextInt(botRange);
-    var positions =
-        generateRandomPositionList(directions[direction], position, 5);
-    Snake bot1 = Snake(
-        name: "bot 1",
-        color: Colors.red,
-        direction: directions[direction],
-        score: 0,
-        positions: positions);
-    setState(() {
-      placeHolderBots.add(bot1);
-    });
-    Future.delayed(
-        const Duration(seconds: 3),
-        () => setState(() {
-              placeHolderBots.remove(bot1);
-              bots.add(bot1);
-            }));
+  gameOver() {
+    for (var i = 0; i < snake.positions.length; i++) {
+      var count = 0;
+      for (var j = 0; j < snake.positions.length; j++) {
+        for (var x = 0; x < bots.length; x++) {
+          for (var t = 0; t < bots[x].positions.length; t++) {
+            if (snake.positions[i] == bots[x].positions[t]) {
+              count = 2;
+            }
+          }
+        }
+        if (snake.positions[i] == snake.positions[j]) {
+          count += 1;
+        }
+        if (count == 2) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   finishGame(context) async {
@@ -230,137 +344,14 @@ class _GameState extends State<Game> {
     });
   }
 
-  gameOver() {
-    for (var i = 0; i < snake.positions.length; i++) {
-      var count = 0;
-      for (var j = 0; j < snake.positions.length; j++) {
-        for (var x = 0; x < bots.length; x++) {
-          for (var t = 0; t < bots[x].positions.length; t++) {
-            if (snake.positions[i] == bots[x].positions[t]) {
-              count = 2;
-            }
-          }
-        }
-        if (snake.positions[i] == snake.positions[j]) {
-          count += 1;
-        }
-        if (count == 2) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  generateNewFood() {
-    food = random.nextInt(foodRange);
-  }
-
-  generateNewCoin() {
-    coin = randomCoin.nextInt(foodRange);
-  }
-
-  updateBots() {
-    for (var i in bots) {
-      switch (i.direction) {
-        case "down":
-          if (i.positions.last > numberOfSquares - 20) {
-            i.positions.add(i.positions.last + 20 - numberOfSquares);
-          } else {
-            i.positions.add(i.positions.last + 20);
-          }
-          break;
-        case "up":
-          if (i.positions.last < 20) {
-            i.positions.add(i.positions.last - 20 + numberOfSquares);
-          } else {
-            i.positions.add(i.positions.last - 20);
-          }
-          break;
-        case "left":
-          if (i.positions.last % 20 == 0) {
-            i.positions.add(i.positions.last - 1 + 20);
-          } else {
-            i.positions.add(i.positions.last - 1);
-          }
-          break;
-        case "right":
-          if ((i.positions.last + 1) % 20 == 0) {
-            i.positions.add(i.positions.last + 1 - 20);
-          } else {
-            i.positions.add(i.positions.last + 1);
-          }
-          break;
-        default:
-      }
-      i.positions.removeAt(0);
-    }
-  }
-
-  checkToSpawnBot() {
-    if (snake.score >= 20 && bots.isEmpty && placeHolderBots.isEmpty) {
-      spawnBots();
-    }
-    if (snake.score >= 50 && bots.length == 1 && placeHolderBots.isEmpty) {
-      spawnBots();
-    }
-  }
-
-  updateGame() {
-    setState(() {
-      checkToSpawnBot();
-      if (bots.isNotEmpty) {
-        updateBots();
-      }
-      switch (snake.direction) {
-        case "down":
-          // LAST ROW OF GRIDS
-          if (snake.positions.last > numberOfSquares - 20) {
-            snake.positions.add(snake.positions.last + 20 - numberOfSquares);
-          } else {
-            snake.positions.add(snake.positions.last + 20);
-          }
-          break;
-        case "up":
-          if (snake.positions.last < 20) {
-            snake.positions.add(snake.positions.last - 20 + numberOfSquares);
-          } else {
-            snake.positions.add(snake.positions.last - 20);
-          }
-          break;
-        case "left":
-          if (snake.positions.last % 20 == 0) {
-            snake.positions.add(snake.positions.last - 1 + 20);
-          } else {
-            snake.positions.add(snake.positions.last - 1);
-          }
-          break;
-        case "right":
-          if ((snake.positions.last + 1) % 20 == 0) {
-            snake.positions.add(snake.positions.last + 1 - 20);
-          } else {
-            snake.positions.add(snake.positions.last + 1);
-          }
-          break;
-        default:
-      }
-      if (snake.positions.last == coin) {
-        snake.coins += 50;
-        generateNewCoin();
-      }
-      if (snake.positions.last == food) {
-        snake.score += 20;
-        generateNewFood();
-      } else {
-        snake.positions.removeAt(0);
-      }
-    });
+  restartGame() {
+    startGame();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: board.color,
+      backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
           children: [
@@ -403,8 +394,8 @@ class _GameState extends State<Game> {
                           return PlaceHolderBot();
                         }
                       }
-                      return boardSquare();
                     }
+                    return boardSquare();
                   }),
             ),
             Align(
@@ -420,74 +411,12 @@ class _GameState extends State<Game> {
                 ),
               ),
             ),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: ElevatedButton.icon(
-                style: ButtonStyle(
-                    backgroundColor: MaterialStateProperty.all(Colors.red)),
-                onPressed: () {
-                  finishGame(context);
-                },
-                icon: const Icon(Icons.close),
-                label: const Text("Game Over"),
-              ),
-            )
           ],
         ),
       ),
     );
   }
 
-  // - - - - - - - -  WIDGETS - - - - - - - - -
-
-  Widget _scoreWidget() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          "Score: ",
-          style: TextStyle(
-              color: board.color == Colors.white
-                  ? Colors.black.withOpacity(.8)
-                  : Colors.white.withOpacity(.5),
-              fontSize: 25),
-        ),
-        Text(
-          snake.score.toString(),
-          style: TextStyle(
-              color: board.color == Colors.white
-                  ? Colors.black.withOpacity(.8)
-                  : Colors.white.withOpacity(.5),
-              fontSize: 25),
-        ),
-      ],
-    );
-  }
-
-  Widget _coinsWidget() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Image.asset(
-          "assets/img/singlecoin.png",
-          width: 25,
-        ),
-        const SizedBox(
-          width: 5,
-        ),
-        Text(
-          snake.coins.toString(),
-          style: TextStyle(
-              color: board.color == Colors.white
-                  ? Colors.black.withOpacity(.8)
-                  : Colors.white.withOpacity(.5),
-              fontSize: 25),
-        ),
-      ],
-    );
-  }
-
-  // Represents an empty board square
   Widget boardSquare() {
     return Padding(
       padding: const EdgeInsets.all(2.0),
@@ -505,7 +434,7 @@ class _GameState extends State<Game> {
       child: Container(
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-            color: snake.color, borderRadius: BorderRadius.circular(5)),
+            color: Colors.orange, borderRadius: BorderRadius.circular(5)),
       ),
     );
   }
@@ -527,7 +456,7 @@ class _GameState extends State<Game> {
       child: Container(
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-            color: snake.color, borderRadius: BorderRadius.circular(5)),
+            color: Colors.orange, borderRadius: BorderRadius.circular(5)),
       ),
     );
   }
@@ -541,6 +470,41 @@ class _GameState extends State<Game> {
             color: Colors.yellow, borderRadius: BorderRadius.circular(5)),
         child: Image.asset("assets/img/singlecoin.png"),
       ),
+    );
+  }
+
+  Widget _scoreWidget() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          "Score: ",
+          style: TextStyle(color: Colors.white.withOpacity(.5), fontSize: 25),
+        ),
+        Text(
+          snake.score.toString(),
+          style: TextStyle(color: Colors.white.withOpacity(.5), fontSize: 25),
+        ),
+      ],
+    );
+  }
+
+  Widget _coinsWidget() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Image.asset(
+          "assets/img/singlecoin.png",
+          width: 25,
+        ),
+        const SizedBox(
+          width: 5,
+        ),
+        Text(
+          snake.coins.toString(),
+          style: TextStyle(color: Colors.white.withOpacity(.5), fontSize: 25),
+        ),
+      ],
     );
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:snake_game/services/route_service.dart';
 import 'package:snake_game/services/user_service.dart';
-
 import 'game.dart';
 import 'model/user.dart';
 
